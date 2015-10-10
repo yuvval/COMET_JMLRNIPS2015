@@ -81,7 +81,8 @@
 \newcommand{\Vg}{\{\Vk\}_{k=0}^{d}} % all group members
 \newcommand{\Vgrc}{\{\Vk\}_{k=1}^{d}} % only off diagonal (row-column)
 
-\newcommand{\A}{A}
+\newcommand{\cholL}{\mat{L}}
+\newcommand{\A}{\mat{A}}
 \newcommand{\B}{\vec{b}}
 \newcommand{\C}{c}
 \newcommand{\invA}{A^{-1}}
@@ -260,14 +261,15 @@ More formally, we perform the block updates as follows. First, since $\W$ is PD 
 \begin{algorithmic}[1]
    \STATE {\bfseries input:} training data, max number of steps, $\alpha$, $\beta$
    \STATE {\bfseries initialize:} 
-   \STATE Generate a triplet set $\cal{T}$, Set  $\W  \leftarrow I_d$, $\W^{-1}  \leftarrow I_d$
+   \STATE Generate a triplet set $\cal{T}$, Set  $\W  \leftarrow I_d$, $\W^{-1}  \leftarrow I_d$, $\cholL  \leftarrow I_d$
    \REPEAT 
    \STATE Select a coordinate $k \in \{1 \ldots d\}$ uniformly at random.
-   \STATE Compute $\invA$ using $\W^{-1}$ (see Appendix B).
    \STATE Compute the coordinate step gradient $\mat{G}$ according to \eqref{gradMtx}.
-   \STATE Select the step size $\eta$, with an upper limit from \eqref{PDUpdateCondQuadForm}.
+   \STATE Compute the Cholesky decomposition of $\A$ using $\cholL$ \cite{Davis05rowchol}.
+   \STATE Select the step size $\eta$, with an upper limit from \eqref{PDUpdateCondQuadForm}. (See Appendix B.)
    \STATE Update the metric to $\newW=\W+\eta G$.
    \STATE Update the metric inverse to $\newW^{-1}$ (see Appendix B).
+   \STATE Update the Cholesky decomposition $\cholL$ using the modified row $\newW_{1:d,k}$, according to \cite{Davis05rowchol}.
    \UNTIL{stopping condition}
 \end{algorithmic}
 \end{algorithm}
@@ -308,12 +310,12 @@ Grouping as a quadratic inequality in $\eta$, and using the notation from \eqref
 For $\eta = 0$, this inequality always
 holds since $\W \succ 0$ guarantees that $\C-\B^{\T} \invA \B >0$. As a result,
  \eqref{PDUpdateCondQuadForm} always has a real
-root $\eta > 0$. This root provides an upper bound on $\eta$ that guarantees that $\newW$ is PD. The computational complexity of solving \eqref{PDUpdateCondQuadForm}, assuming $\invA$ is given, is $O(d^2)$ because computing the coefficients involves computing bilinear terms.
-Furthermore, $(\newW)^{-1}$ and $\invA$ can be computed efficiently in $O(d^2)$ given $\W^{-1}$, using the Woodbury inverse matrix identity \cite{woodbury1950inverting}, see Appendix B for details.
+root $\eta > 0$. This root provides an upper bound on $\eta$ that guarantees that $\newW$ is PD. The computational complexity of solving \eqref{PDUpdateCondQuadForm}, assuming a Cholesky decomposition of $\A$ is given, is $O(d^2)$, because computing the coefficients involves computing bilinear terms.
+The Cholesky decomposition of $\newW$ and of $\A$ can be evaluated efficiently in $O(d^2)$ using row modification \cite{Davis05rowchol}. $(\newW)^{-1}$ can also be evaluated in $O(d^2)$, given $\W^{-1}$, using the Woodbury inverse matrix identity \cite{woodbury1950inverting}, see Appendix B for details.
 
 To conclude, we derived an upper limit for the step size of a block coordinate (column-row) step (\eqref{gradMtx} - \eqref{updateEq}) that guarantees  the updated matrix to be PD. The computational complexity for the evaluation
 of \eqref{PDUpdateCondQuadForm} is $O(d^2)$, while keeping $O(d^2)$ matrix elements in the memory.
-This approach is summarized in Algorithm \ref{alg:comet}.
+It also maintains an updated Cholesky root $\cholL| W = \cholL\T \cholL$, and therefore an embedding of the features to the metric space throughout the progress of training. This approach is summarized in Algorithm \ref{alg:comet}.
 
 
 
@@ -381,11 +383,11 @@ See Appendix D for the theorem and its proof.
    \STATE Select a coordinate $k \in \{1 \ldots d\}$ uniformly at random.
    \STATE Compute the coordinate step gradient $\mat{G}$ according to \eqref{gradMtx}.
    \STATE Take a proximal step with a fixed step size and $\lambda$ sparsity coefficient.
-   \IF {Update is zero}
+   \IF {Update equals its previous iteration}
      \STATE Continue to next iteration.
    \ELSE 
-      \STATE Select the step size $\eta$, with an upper limit from \todo{add eq ref}.
-       \STATE Take an alternative proximal step with $\eta$ size and $\lambda$ sparsity coefficient.
+      \STATE Select the step size $\theta$, with an upper limit from \todo{add eq ref}.
+       \STATE Take an alternative proximal step with $\theta$ size and $\lambda$ sparsity coefficient.
       \STATE Update the non overlapping decomposition $\Vgrc$ with the step result: $\Vk^{new}$.
       \STATE Update the metric: $\newW = \Vk^{new} + \W - \Vk$
        \STATE Update the metric inverse to $\newW^{-1}$ (see Appendix B).
@@ -566,12 +568,14 @@ The derivative of the ranking loss is then given by
 \nonumber 
 \end{equation} where $l'(x) \eqdef \frac{d{l(x)}}{dx}$ is the outer derivative of the loss function, $\Delta\vec{p}_{t} \eqdef (\vec{p}_{t}^{-} - \vec{p}_{t}^{+})$.
 
-\section*{Appendix B. Updating the inverse matrices}
+\section*{Appendix B. Evaluating the coefficients of the quadratic condition \eqref{PDUpdateCondQuadForm} and updating the inverse matrix}
 \label{appendix-inverse}
 
-To compute efficiently the updates of \eqref{PDUpdateCondQuadForm} we update $\W^{-1}$ following a block coordinate step, and derive $\invA$ from $\W^{-1}$ before the next step. Both terms take $O(d^2)$ to compute.
+To compute efficiently the coefficients of \eqref{PDUpdateCondQuadForm} we maintain $\cholL$, the Cholesky decomposition of $\W$, and update it following a block coordinate step. Moreover, we derive $\cholL_A$ A Cholesky decomposition of $A$ from $\cholL$. Both terms take $O(d^2)$ to compute \cite{Davis05rowchol}.
 
-$\newW^{-1}$ can be easily computed using the Woodbury matrix
+The term $\invA \B$ is the solution of the linear system $\A x = \B$ and is obtained using $\cholL_A$ the Cholesky decomposition of $\A$. In a similar manner $\invA \uvec$ is a solution of the linear system $\A x = \uvec$. Both terms cost $O(d^2)$ to compute. For evaluating the coefficients of \eqref{PDUpdateCondQuadForm}, the rest of its terms can be evaluated by direct dot product with a cost of $O(d)$. 
+
+For evaluating the $\log\det$ gradient, $\newW^{-1}$ can be easily computed using the Woodbury matrix
 identity \cite{woodbury1950inverting}. We rewrite \eqref{updateEq} and \eqref{gradMtx}, using $\newW = \W + \eta G = \W+\mat{\widetilde{G}}$
  %\label{updateEqWDB}
 and write
@@ -596,24 +600,7 @@ Using the Woodbury matrix identity gives
     \label{InvWwdb}
 \end{equation}
 
-Last, we evaluate $\invA$ before a coordinate step given $\W$
-and $\W^{-1}$, using the Schur complement and its corresponding
-notation \eqref{schurNotationPreUpdate}:
-\begin{equation}
-\begin{array}{l}
- \W^{-1} \!\!=\!\! 
- \left[ \begin{array}{cc} s & -s \B\T \invA \\ -s \B\T \invA\T &  \invA \!+ \!\invA \B s \B\T \invA  \end{array}  \right]
-\end{array}
-\label{BlockInvW}
-\end{equation} 
-where $s= \C-\B\T \invA \B$ is a scalar denoting the Schur Complement. This gives us four terms: (1) $s = \W^{-1}_{1,1}$, (2)
-$  -s \B\T \invA = -\W^{-1}_{1,1} \B\T \invA = \W^{-1}_{1,2:d}$, (3) $\B\T \invA = -\frac{\W^{-1}_{1,2:d}}{\W^{-1}_{1,1} }$ and (4) $\invA\B = (\B\T \invA)\T$. Subtituting them in the lower right block of \eqref{BlockInvW} yields $\invA + \frac{1}{\W^{-1}_{1,1} } \W^{-1}_{2:d,1} (\W^{-1}_{2:d,1})\T = \W^{-1}_{2:d,2:d}$. Rearranging the last term gives
-\begin{equation}
-  \invA = \W^{-1}_{2:d,2:d}- \frac{\W^{-1}_{2:d,1} {\W^{-1}_{1, 2:d}}^{\T}}{\W^{-1}_{1,1}}. 
-  \label{InvA}
-\end{equation}
-Computing \eqref{InvA} has a complexity of $O(d^2)$.
-
+ 
 
 \section*{Appendix C. Analysis of computational complexity}
 
@@ -743,7 +730,7 @@ Lemma \ref{lem:ESO} shows our objective is smooth and satisfies Assumption 1 of 
 \end{proof}
 
 \section*{Appendix E. Selecting the step size for the sparse proximal step}
-In section \ref{subsec:step} we demonstrated how to select the step size \eqref{PDUpdateCondQuadForm} for a single row-column update given a PD matrix and and a single row-column update matrix $\mat{G}$. This approach can be applied to any row-column update of $\W$ and is not limited to gradient updates. 
+In section \ref{subsec:step} we demonstrated how to select the step size \eqref{PDUpdateCondQuadForm} for a single row-column update given a PD matrix and and a single row-column update matrix $\mat{G}$. 
 
 It is not straight forward to apply the above method to evaluate proximal step size $\theta$. The proximal step result $\zk$ is a vector sum of a gradient step and a shrinkage operation \todo{add eq ref}, repeated here for convenience. 
 
@@ -758,9 +745,17 @@ It is not straight forward to apply the above method to evaluate proximal step s
 
 The following approach is applied to know whether the step size bound $\eta$ by \eqref{PDUpdateCondQuadForm} also holds for the proximal step, and if not it finds a smaller step size that can fulfill it.
 
+
+\newcommand{\Vkorigin}{\emph{"origin"}}
 \todo{change to matrix notation}
-$\hk$ is the gradient step with respect to $\Vk$. We apply \eqref{PDUpdateCondQuadForm} to evaluate $\eta$ and the maximal update $\hk^{max}$ in the direction of $\hk$. Therefore, it is easy to see that any point on a vector $\vec{h}$ between $\W$ to $\W + \hk^{max}$ will result with a PD update. We define an \emph{"origin"} which is the point where the proximal step will result with $\vec{0}$. To clarify this point, note that \emph{this is not a zero update.} Instead it means that $\Vk^{new}$ is all zeros, and hence that kind of update would result with $\newW = \W - \Vk$. Next, we use the fact that the PD cone is convex, and therefore, if the \emph{"origin"} resides inside the PSD cone, therefore, any point on a vector that connects \emph{"origin"} with another point on a vector $\vec{h}$ between $\W$ to $\W + \hk^{max}$ resides inside the PD cone. The collection of all these points ...
- \todo{!!}
+$\hk$ is the gradient step with respect to $\Vk$. We apply \eqref{PDUpdateCondQuadForm} to evaluate $\eta$ and the maximal update $\hk^{max}$ in the direction of $\hk$. Therefore, it is easy to see that any point on a vector $\vec{h}$ between $\W$ to $\W + \hk^{max}$ will result with a PD update. We define an \Vkorigin which is the point where the proximal step will result with $\vec{0}$. To clarify this point, note that \emph{this is not a zero update.} Instead it means that $\Vk^{new}$ is all zeros, and hence that kind of update would result with $\newW = \W - \Vk$. Next, we use the fact that the PD cone is convex, and therefore, if the \Vkorigin resides inside the PSD cone, therefore, any point on a vector that connects \Vkorigin with another point on a vector $\vec{h}$ between $\W$ to $\W + \hk^{max}$ resides inside the PD cone. Therefore, for any $\theta < \eta$ the proximal step $\zk$ results on vector that connects the \Vkorigin with a point on $\W$ to $\W + \hk^{max}$, and therefore, any such result is PD. In a similar fashion as in \eqref{PDUpdateCondQuadForm}, we can easily check if the \Vkorigin resides inside the PSD cone.  
+
+Summing it up, we derived an upper bound for the step size by showing that if \Vkorigin is inside the PD cone, then any proximal step with a size $\theta < \eta$ would result inside the PD cone. \Vkorigin positive-definiteness can be easily evaluated by following a similar approach as in \eqref{PDUpdateCondQuadForm}. The cost of such evaluation is $O(d^2)$
+
+When \Vkorigin resides outside the cone, we can check what is the most distant point from $\W$ on the direction of the \Vkorigin, we label this point as $V_0$. Again any point on a vector that connects the $V_0$ with a point on $\W$ to $\W + \hk^{max}$. However, now only a subset of the proximal steps with $\theta < \eta$ will result inside the PD cone. Since the proximal steps reside on a continues locus, this subset is also continues. Therefore, we can find the maximal step size with few binary search steps, starting from $\theta = \eta$ and reducing $\theta$ by 50\% on each iteration. In practice, we found that even when we learn a moderately sparse metric ($\rho <20\%$), it is very rare that the \Vkorigin is not PD. Therefore, on our experiments we skip the update in case its \Vkorigin is not PD.
+
+To conclude, we demonstrated how to evaluate a bound on the step size that maintains the proximal step inside the PD cone. Therefore, during training we can adaptively set the step size accordingly. 
+
 \section*{Appendix F. Results for Reuters CV1 1K features, Caltech256 249 categories and Protein}
 
 \begin{figure}[h]
