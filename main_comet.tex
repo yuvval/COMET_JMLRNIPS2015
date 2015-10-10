@@ -114,7 +114,7 @@
 \@addtoreset{theorem}{section}
 \makeatother
 
-%\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmin}{arg\,min}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -253,21 +253,17 @@ where $\Delta\p_t = \p_t^- - \p_t^+$, and $l'(x) \eqdef \frac{d{l(x)}}{dx}$ is t
 \section{Learning a PD metric with block-coordinate descent: Dense COMET}
 
 The learning setup above is commonly studied, but 
-optimizing it using the gradient approach of \eqref{gradMtx} is computationally hard, because the $\log \det$ regularizer yields a $\W^{-1}$ term in the gradient. This term makes naive implementations with matrix inversion slow, scaling cubically with the matrix dimension. 
+optimizing it using the gradient approach of \eqref{gradMtx} is computationally hard, because the $\log \det$ regularizer yields a $\W^{-1}$ term in the gradient. This term makes naive-implementations with matrix inversion slow, scaling cubically with the matrix dimension. 
 
-In addition, while the in theory the $\log \det$ term ensures that the optimum is within the PD cone, in practice the intermediate iterates for 1-st order methods are not necessarily confined to the cone. The reason is that the gradients of the $\log \det$ term are not Lipschitz \footnote{one might add a small constant times the identity to the model, but then the step size will have to be very small to ensure remaining within the cone, resulting in slower convergence.}, and any given step size might take the update outside the cone. 
+In addition, while in theory the $\log \det$ term ensures that the optimum is within the PD cone, in practice the intermediate iterates for 1-st order methods are not necessarily confined to the cone. The reason is that the gradients of the $\log \det$ term are not Lipschitz \footnote{one might add a small constant times the identity to the model, but then the step size will have to be very small to ensure remaining within the cone, resulting in slower convergence.}, and any given step size might take the update outside the cone. 
 % A second problem concerns the effect of the $\log \det$ barrier on the solution space. In many applications the actual matrix that minimizes the above loss is near the boundary of the cone. This is the case when using human judgment on similarity as a supervision signal. In these cases, when optimizing without using the PSD constraint, one often finds the optimum outside or near the boundary of the PSD cone. The problem is that if the only component keeping the solutions inside the PSD cone is the $\log \det$ term, it may distort the gradients near the boundary of the convex set. 
 
-We propose an algorithm that alleviates these problem by using efficient block-coordinate descent that keeps optimization within the boundaries of the PD cone while essentially amortizing the cost of matrix inversion.
-In general, block-coordinate descent also enjoys provably fast convergence rates, and is especially useful when the block update can be performed efficiently, as we show below. We derive a method that enables using as large a step size as possible and still remain within the PD cone for all iterates, based on the Schur complement condition for PD matrices \citep[p. 650]{boyd2004convex}.
+We propose an algorithm that alleviates these problems by using efficient block-coordinate descent that keeps optimization within the boundaries of the PD cone while essentially amortizing the cost of matrix inversion.
+In general, block-coordinate descent also enjoys provably fast convergence rates, and is especially useful when the block update can be performed efficiently, as we show below. We derive a method that enables using as large as possible step size and still remain within the PD cone for all iterates, based on the Schur complement condition for PD matrices \citep[p. 650]{boyd2004convex}.
 
 Our algorithm applies block-coordinate descent as follows. At each step, a single feature is drawn at random; The matrix entries on the corresponding row and column are treated as a block and all get updated. Importantly, we compute analytically a bound on the size of the update step, which guarantees that the updated matrix remains positive definite. %Without the bound, taking a coordinate step may take $\newW$ out of the PD cone, even if the objective holds a $\log\det$ barrier term.
 
-More formally, we perform the block updates as follows. First, since $\W$ is PD it is also symmetric, and we replace $\W$ in \eqref{eq-logdet-loss} with $\tfrac{1}{2}(\W + \W\T)$. This guarantees that the gradient resulting from \eqref{gradMtx} is also symmetric. We draw a feature $k \in \{1 \ldots d$\} at random, and define a matrix $\mat{G}$ that is all zeros except the values of $-\grd$ on the $k$-th row and $k$-th column. Finally we update the weight matrix using step size $\eta$:
-\begin{equation}
-    \newW = \W +\eta \mat{G}.
-\label{updateEq}
-\end{equation}
+More formally, we perform the block updates as follows. First, since $\W$ is PD it is also symmetric, hence we replace $\W$ in \eqref{eq-logdet-loss} with $\tfrac{1}{2}(\W + \W\T)$. This guarantees that the gradient resulting from \eqref{gradMtx} is also symmetric. We draw a feature $k \in \{1 \ldots d$\} at random, and define a matrix $\mat{G}$ that is all zeros except the values of $-\grd$ on the $k$-th row and $k$-th column. Finally we update the weight matrix with $\newW = \W +\eta \mat{G}$, using a step size $\eta$ that is selected according to Section \ref{subsec:step}
 
 To hold the $\log\det$ derivative terms, $(\newW)^{-1}$ is also maintained and updated: using the Woodbury inverse matrix identity \citep{woodbury1950inverting}, and given $\W^{-1}$. This update costs $O(d^2)$, see Appendix B for details.
 
@@ -281,63 +277,22 @@ To hold the $\log\det$ derivative terms, $(\newW)^{-1}$ is also maintained and u
    \REPEAT 
    \STATE Select a coordinate $k \in \{1 \ldots d\}$ uniformly at random.
    \STATE Compute the coordinate step gradient $\mat{G}$ according to \eqref{gradMtx}.
-   \STATE Compute the Cholesky decomposition of $\A$ in \eqref{schurNotationPreUpdate} using $\cholL$ \citep{Davis05rowchol}.
    \STATE Select the step size $\eta$, with an upper limit from \eqref{PDUpdateCondQuadForm}. (See Appendix B.)
    \STATE Update the metric to $\newW=\W+\eta G$.
-   \STATE Update the metric inverse to $\newW^{-1}$ (see Appendix B).
-   \STATE Update the Cholesky decomposition $\cholL$ using the modified row $\newW_{1:d,k}$ \citep{Davis05rowchol}.
+   \STATE Update $\newW^{-1}$ and $\cholL$ (see Appendix B).
    \UNTIL{stopping condition}
 \end{algorithmic}
 \end{algorithm}
 
 \subsection{Selecting the step size $\eta$, to remain within the PD cone}\label{subsec:step}
-As discussed above, taking a coordinate step may take $\newW$ out of the PD cone, even if the objective holds a $\log\det$ barrier term. We show that given $\W$ and $\mat{G}$ the step size can be bounded to guarantee that $\newW$ remains PD, and that the bound can be computed efficiently using the Schur complement condition for positive definiteness.
+As discussed above, taking a coordinate step may take $\newW$ out of the PD cone. On Appendix B, we show that given $\W$ and $\mat{G}$ the step size can be bounded to guarantee that $\newW$ remains PD, and that the bound can be computed efficiently using the Schur complement condition for positive definiteness. In turn, the condition reduces to a scalar inequality for the case of row-column update \eqref{schurCond}, repeated here for convenience
 
+\begin{equation*}
+  \newW \succ  0 \quad \Leftrightarrow \quad  \C^* - \B^*\T \invA \B^* >  0
+\end{equation*},
+where $\C^* = \Wscalar^{new} \in \R$ (a scalar), $\B^* = \Wvec^{new} \in \R^{d-1}$ (a column vector) and $A^* = \newW_{2:d,2:d} \in \R^{(d-1)}$. Following, it induces a condition \eqref{PDUpdateCondQuadForm} over $\eta$, which results with an upper limit for the step size of a block coordinate (row-column) step over \eqref{gradMtx}. Respecting the upper limit, guarantees  the updated matrix to be PD. The computational complexity for evaluating  \eqref{PDUpdateCondQuadForm} is $O(d^2)$, while keeping $O(d^2)$ matrix elements in the memory.
 
-{\bf ============ beginning of section to move to an appendix. KEEP ONLY THE CONCLUDING PARAGRAPH. EQUATION 4 (W=W+G, should also be inlined since it is trivial. } 
-
-Without loss of generality, assume that the current round updates the first feature ($k = 1$). We write the pre- and post-update
-matrices, as
-\begin{equation}
-  \W = \left[ \begin{matrix} \C & \B\T \\ \B & A \end{matrix} \right],
-  \quad
-  \newW = \left[ \begin{matrix} \C^* & \B^*\T \\ \B^* & A^* \end{matrix} \right],
-  \label{schurNotationPreUpdate}
-\end{equation}
- where $\C = \Wscalar \in \R$ (a scalar), $\B = \Wvec \in
-\R^{d-1}$ (a column vector) and $A = \W_{2:d,2:d} \in \R^{(d-1)
-\times (d-1)}$. Similarly for $A^*$, $\B^*$ and $\C^*$.
-
-According to the Schur complement condition for positive definiteness
-\citep[p. 650]{boyd2004convex}, $\newW$ is PD iff both
-$A^*$ and $\C^* - \B^*\T A^{*-1} \B^*$ are positive definite.
-Since $W \succ 0$ and $A$ is a minor of $\W$ which is left unchanged by the update, we have $A^* =
-A \succ 0$. Moreover, $\C^* - \B^*\T A^{*-1} \B^*$ is a
-scalar, yielding
-\begin{equation}
-  \newW \succ  0 \quad \Leftrightarrow \quad  \C^* - \B^*\T \invA \B^* >  0.
-  \label{schurCond}
-\end{equation}
-Now let $\uscalar = \C^* - \C$ and $\uvec = \B^* - \B$ be the updated scalar and vector
-obtained from $\eta G = \newW - \W$. We expand \eqref{schurCond} and
-\eqref{gradMtx} (with $k=1$) yielding a necessary and sufficient condition for $\newW \succ 0$: $(\Wscalar + 2\eta \uscalar)-(\Wvec + \eta \uvec)\T \invA (\Wvec + \eta \uvec)   > 0$.
-Grouping as a quadratic inequality in $\eta$, and using the notation from \eqref{schurNotationPreUpdate} we result with
-\begin{equation}
-\label{PDUpdateCondQuadForm}
-(\uvec\T \invA \uvec) \, \eta^2 
--2(\uscalar - \uvec\T \invA \B) \,\eta 
--(\C - \B\T  \invA \B) < 0 .
-\end{equation}
-For $\eta = 0$, this inequality always
-holds since $\W \succ 0$ guarantees that $\C-\B^{\T} \invA \B >0$. As a result,
- \eqref{PDUpdateCondQuadForm} always has a real
-root $\eta > 0$. This root provides an upper bound on $\eta$ that guarantees that $\newW$ is PD. Computing the coefficients involves computing bilinear terms and costs $O(d^2)$ if $\invA$ is given. But it can be done more efficiently, with a Cholesky decomposition of $\A$. The Cholesky decomposition of $\newW$ and of $\A$ can be evaluated efficiently in $O(d^2)$ using row modification \citep{Davis05rowchol, CHOLMOD}.
-
-{\bf ============ end of section to move to an appendix }
-
-To conclude, we derived an upper limit for the step size of a block coordinate (column-row) step (\eqref{gradMtx} - \eqref{updateEq}) that guarantees  the updated matrix to be PD. The computational complexity for the evaluation
-of \eqref{PDUpdateCondQuadForm} is $O(d^2)$, while keeping $O(d^2)$ matrix elements in the memory.
-It also maintains an updated Cholesky root matrix $\cholL$ s.t. $W = \cholL\T \cholL$, and therefore an embedding of the features to the metric space throughout the progress of training. This approach is summarized in Algorithm \ref{alg:comet}.
+We chose to use a Cholesky solver \citep{CHOLMOD} for evaluating the condition in \eqref{PDUpdateCondQuadForm} efficiently. Therefore, we maintain an updated Cholesky root matrix $\cholL$ s.t. $W = \cholL\T \cholL$. Updating $\cholL$ following a step costs $O(d^2)$ \citep{Davis05rowchol}. Maintaining an updated Cholesky root matrix also provides an embedding of the features to the metric space throughout the progress of the training. This approach is summarized in Algorithm \ref{alg:comet}.
 
 
 \subsection{Convergence rate}
@@ -347,7 +302,7 @@ The objective $L(\W)$ in \eqref{eq-logdet-loss} is strongly convex but is not sm
 We prove the following Theorem (see Appendix D):
 
 \begin{theorem}
-Let $\W^t$ be the $t$-th iterate of Algorithm \ref{alg:comet} with objective function $\tL$, sampling each column-row $i$ with probability $\frac{1}{d}$. Let $\tilde{L}^*$ be the optimal value of $\tL$ on the PD cone. Let $\beta^* \geq \beta$ be the strong convexity parameter of $\tL$, $M^1$ a constant depending on the norm of the dataset, $1 > \rho >0, \epsilon>0$. Then:
+Let $\W^t$ be the $t$-th iterate of Algorithm \ref{alg:comet} with objective function $\tL$, sampling each column-row $i$ with probability $\frac{1}{d}$, and step size $\eta$ which is smaller than $1/\left( 2 \sum_{t=1}^T (\qt_i^2 +{\Delta\vec{p}_{t}}_i^2) + \frac{\alpha d}{\kappa^2} + \beta\right)$. Let $\tilde{L}^*$ be the optimal value of $\tL$ on the PD cone. Let $\beta^* \geq \beta$ be the strong convexity parameter of $\tL$, $M^1$ a constant depending on the norm of the dataset, $1 > \rho >0, \epsilon>0$. Then:
 
 If $t > \frac{ (M^1 + \alpha d (1/\kappa)^2 + \beta)}{d\beta^*} log \left( \frac{\tilde{L}(W^0) - \tilde{L}^*}{\epsilon \rho}\right)$ then $Prob(\tilde{L}(\W^t) - \tilde{L}^* \leq \epsilon) \geq 1-\rho$.
 \end{theorem}
@@ -361,27 +316,27 @@ If $t > \frac{ (M^1 + \alpha d (1/\kappa)^2 + \beta)}{d\beta^*} log \left( \frac
    \caption{Sparse COMET}
    \label{alg:spcomet}
 \begin{algorithmic}[1]
-   \STATE {\bfseries input:} training data, $\alpha$, $\beta$, $\lambda$
+   \STATE {\bfseries input:} training data, $\alpha$, $\beta$, $\lambda$, $\theta_{max}$
    \STATE {\bfseries initialize:} 
    \STATE Generate a triplet set $\cal{T}$
    \STATE Set  $\W  \leftarrow I_d$, $\W^{-1}  \leftarrow I_d$, $\Vz   \leftarrow I_d$, $\Vgrc \leftarrow \vec{0}$
    \STATE Minimize the loss for the diagonal coordinate, with gradient descent steps according to  \eqref{gradMtx}.
    \STATE Update $\W$, $\W^{-1}$, $\Vz \leftarrow \W$
-    \STATE Init the Cholesky decomposition with $\cholL \leftarrow \W$
+   % \STATE Init the Cholesky decomposition with $\cholL \leftarrow \W$
     
    \REPEAT 
    \STATE Select a coordinate $k \in \{1 \ldots d\}$ uniformly at random.
    \STATE Compute the coordinate step gradient $\mat{G}$ according to \eqref{gradMtx}.
-   \STATE Take a proximal coordinate step with a fixed step size and $\lambda$ sparsity coefficient.
+   \STATE Solve the proximal problem \eqref{eq:prox} with step size $\theta_{max}$ and $\lambda$ sparsity coefficient.
    \IF {Updated coordinate equals its previous iteration}
      \STATE Continue to next iteration.
    \ELSE 
-      \STATE Select the step size $\theta$, with an upper limit according to Appendix E.
-       \STATE Take an alternative proximal coordinate step with $\theta$ size and $\lambda$ sparsity coefficient.
-      \STATE Update the non overlapping decomposition $\Vgrc$ with the step result: $\Vk^{new}$.
-      \STATE Update the metric: $\newW = \Vk^{new} + \W - \Vk$
+      \STATE Select new step size $\theta$, with an upper limit according to Appendix E.
+       \STATE Solve the proximal problem \eqref{eq:prox} with step size $\theta$ and $\lambda$ sparsity coefficient.
+      \STATE Update the decomposition $\Vgrc$ with the step result: $\Vk^{new}$.
+      \STATE Update the metric: $\newW = \Vk^{new} + \W - \Vk$.
        \STATE Update the metric inverse to $\newW^{-1}$ (see Appendix B).
-      \STATE Update the Cholesky decomposition $\cholL$ using the modified row $\newW_{1:d,k}$ \citep{Davis05rowchol}.
+      %\STATE Update the Cholesky decomposition $\cholL$ using the modified row $\newW_{1:d,k}$ \citep{Davis05rowchol}.
     \ENDIF
    \UNTIL{stopping condition}
 \end{algorithmic}
@@ -390,6 +345,7 @@ If $t > \frac{ (M^1 + \alpha d (1/\kappa)^2 + \beta)}{d\beta^*} log \left( \frac
 \section{Learning a block-sparse PD metric: Sparse COMET}
 The PD metric learned above can be used for extracting new features, but one is often interested to maintain interpretability with \emph{feature selection}: learn a metric which only relies on a small subset of the original feature set, or a small subset of feature pairs. To that end, we develop a method for learning feature-sparse PD metrics, using a block-coordinate descent method that maintains the PD property during training.
 
+The PD metric learned above can be used for extracting new features, but it does use the structure often found in feature interactions. Moreover, inference involves multiplication by a dense $d \times d$ matrix. In most high-dimensional learning problems, many of the features do not interact intensely with each other. Therefore, while we  
 
 {\bf Gal: The current motivation  for our structured sparsity sounds like a 'technicality' . Instead Lets explain that a natural structure of connection, is that we want to treat separately the weights of individual features, and the weights of interactions, and then that some features may be more independent and not interact with other features}. 
 
@@ -443,15 +399,26 @@ L(\Vg) =
   \min_{\Vg} \sum_{\trip \in \cal{T}}  [1+\sum_{k=0}^{d}{\qt\T \Vk\Delta \vec{p}_t } ]_{+} - \alpha \log \det(\sum_{k=0}^{d}{\Vk}) + \lambda \sum_{i=1}^d \|V_k\|_2,
   \label{sparse_group_loss}
 \end{equation} 
-where we note that it is possible to add an $L_2$ or $L_2$-squared regularization factor to the diagonal group $V_0$. Equation \eqref{sparse_group_loss} is obviously a convex function of $\Vg$, where we note that the negative $\log \det$ term is a composition of a convex function with a linear function, and is therefore convex.
+where we note that it is possible to add an $L_2$ or $L_2$-squared regularization factor to the diagonal group $V_0$. Equation \eqref{sparse_group_loss} is a convex function of $\Vg$, where we note that the negative $\log \det$ term is a composition of a convex function with a linear function, and therefore convex.
 
-Given the decomposition $\Vg$, we can optimize \eqref{sparse_group_loss} using standard block-coordinate methods for non-smooth objectives. Specifically we use the method proposed by \citet{richtarik2014iteration}.
+Given the decomposition $\Vg$, we can optimize \eqref{sparse_group_loss} using standard block-coordinate methods for non-smooth objectives. Specifically we use the method of \citet{richtarik2014iteration}. Let $\mathcal{V}_k$ denote the set of $d \times d$ matrices which are all zero except the non-diagonal entries on $k$-th row and column. At each block update, we solve the following proximal problem, which admits a closed form solution \citep{bach2012optimization}:
+\begin{equation}\label{eq:prox}
+V_k^{new} = \argmin_{\mat{V} \in \mathcal{V}_k} \left\langle \frac{\partial{L (V_k)}}{\partial V_k}, \mat{V} \right\rangle + \frac{\theta}{2}\|V - V_k\|_F^2 + \lambda \|V\|_F,
+\end{equation}
+and then update $\W^{new} = \W + V_k^{new} - V_k$.
+
+As with the dense case, the proximal step provides a theoretical convergence guarantee for a very conservative step size $\theta$, which ensures that at every update the iterate $\W^{new}$ remains within the PD cone.
+%In practice we show how to use larger step sizes which result with faster convergence.
+However, a large non-adaptive step size may result with a matrix $\W^{new}$ that is not PD. The approach we take is to set a maximal step-size $\theta_{max}$, but use the Schur complement bound to evaluate whether the update is still within the PD cone. In case it is not, we choose a smaller step-size that is guaranteed to maintain $W^{new}$ within the PD cone. We do this in a similar manner to the dense case, with some necessary adaptations. Evaluating the step size bound costs $O(d^2)$; details of the method are provided in Appendix E. 
+
+We note that the proximal update \eqref{eq:prox} maintains many of the groups $V_k$ as identically zero. This results in a sparse update schedule, since a group that is $0$ often remains $0$, saving the computation of the PD bound and of updating $\W$. Therefore sparse COMET reduces the mean cost per step to $O(\rho d^2)$, where $\rho$ is the group sparsity of $\Vgrc$. The method is summarized in Algorithm~\ref{alg:spcomet}.
+
+\subsection{Convergence}
+Similar to the case of dense COMET, the objective $L(\Vg)$ in \eqref{group_loss} is strongly convex but is not smooth. Let $\tilde{L}(\Vg) = L(\{\kappa I_d + V_0\} \cup \{V_k\}_{k=1}^d)$ be a modified version of the loss in Eq. \ref{eq-logdet-loss}, where $I_d$ is the $d \times d$ identity matrix, and $\kappa>0$ is a fixed parameter.
+As shown in \cite[Theorem 7]{richtarik2014iteration}, the proximal block coordinate descent we use converges w.h.p. linearly to the optimal value, given that the maximal step size $\theta_{max}$ is smaller than the block-Lipschitz constants of $\tilde{L}(\Vg)$.
 
 
-As with the dense case, the proximal step provides a theoretical convergence guarantee for a very conservative step size. In practice one can take larger step sizes to result with fast convergence. However, a large non-adaptive step size may result with a matrix that is not PD. To maintain the positive definiteness, we evaluate the bound on the step size and adaptively set the step size accordingly. This approach is similar to the dense case, with some adaptations. Details are provided in Appendix E. 
-
-Evaluating the step size bound costs $O(d^2)$. However, in the sparse case, we can take the proximal step, before evaluating the bound. If the proximal step ends with a zero update, as is the case for most of the zeroed coordinates, we do not need to evaluate the bound and can iterate to the next coordinate. Otherwise, we evaluate the bound, adaptively set the step size and evaluate the proximal update accordingly. This approach reduces the mean cost per step to $O(\rho d^2)$, where $\rho$ denotes the row sparsity of $\Vgrc$. It is summarized in Algorithm~\ref{alg:spcomet}
-
+%%%*********************
 \section{Computational complexity}
 
 Table \ref{comp-complx} summarizes the asymptotic computational complexity of COMET and several competing methods. COMET's complexity is better than SGD-based methods which require repeated projections \citep{OASIS, qian}. COMET also has lower complexity than HDSL \citep{HDSL}.  Finally, in the regime of many samples with at least moderate sparsity, COMET's computational complexity is better than LEGO \citep{lego}. The derivation of the computational complexity results is given in Appendix C.
@@ -587,7 +554,7 @@ We presented an approach for learning a metric from data samples, while continuo
 
 An important challenge for learning is the case where the set of features is not fixed in advance, but changes with time. This is a typical scenario in many real life applications of learning: as more data accumulates, it is possible to estimate more parameters accurately, so more features and signals are gradually added to existing systems. It is therefore desirable to develop algorithms that can learn metrics in face of a growing feature set. COMET can be effortlessly adapted to this setup, by extending the existing learned matrices and sample more heavily rows and columns that correspond to new features. The specifics of this approach are the topic of further research.
 
-\acks{We would like to thank Prof. Tim Davis for fruitful discussions and for his assistance with utilizing the Cholesky decomposition row-column updates with the CHOLMOD package.} 
+\acks{We would like to thank Prof. Tim Davis for fruitful discussions and for his assistance with utilizing the Cholesky decomposition row-column updates with the CHOLMOD solver.} 
 % Manual newpage inserted to improve layout of sample file - not
 % needed in general before appendices/bibliography.
 
@@ -608,15 +575,52 @@ The derivative of the ranking loss is then given by
 \nonumber 
 \end{equation} where $l'(x) \eqdef \frac{d{l(x)}}{dx}$ is the outer derivative of the loss function, $\Delta\vec{p}_{t} \eqdef (\vec{p}_{t}^{-} - \vec{p}_{t}^{+})$.
 
-\section*{Appendix B. Evaluating the coefficients of the quadratic condition \eqref{PDUpdateCondQuadForm} and updating the inverse matrix}
+\section*{Appendix B. Deriving the condition for the bound on step size and updating the inverse matrix}
 \label{appendix-inverse}
 
-To compute efficiently the coefficients of \eqref{PDUpdateCondQuadForm} we maintain $\cholL$, the Cholesky decomposition of $\W$, and update it following a block coordinate step. Moreover, we derive $\cholL_A$ A Cholesky decomposition of $A$ from $\cholL$. Both terms take $O(d^2)$ to compute \citep{Davis05rowchol}.
+Without loss of generality, assume that the current round updates the first feature ($k = 1$). We write the pre- and post-update
+matrices, as
+\begin{equation}
+  \W = \left[ \begin{matrix} \C & \B\T \\ \B & A \end{matrix} \right],
+  \quad
+  \newW = \left[ \begin{matrix} \C^* & \B^*\T \\ \B^* & A^* \end{matrix} \right],
+  \label{schurNotationPreUpdate}
+\end{equation}
+ where $\C = \Wscalar \in \R$ (a scalar), $\B = \Wvec \in
+\R^{d-1}$ (a column vector) and $A = \W_{2:d,2:d} \in \R^{(d-1)
+\times (d-1)}$. Similarly for $A^*$, $\B^*$ and $\C^*$.
 
-The term $\invA \B$ is the solution of the linear system $\A x = \B$ and is obtained using $\cholL_A$ the Cholesky decomposition of $\A$. In a similar manner $\invA \uvec$ is a solution of the linear system $\A x = \uvec$. Both terms cost $O(d^2)$ to compute. For evaluating the coefficients of \eqref{PDUpdateCondQuadForm}, the rest of its terms can be evaluated by direct dot product with a cost of $O(d)$. 
+According to the Schur complement condition for positive definiteness
+\citep[p. 650]{boyd2004convex}, $\newW$ is PD iff both
+$A^*$ and $\C^* - \B^*\T A^{*-1} \B^*$ are positive definite.
+Since $W \succ 0$ and $A$ is a minor of $\W$ which is left unchanged by the update, we have $A^* =
+A \succ 0$. Moreover, $\C^* - \B^*\T A^{*-1} \B^*$ is a
+scalar, yielding
+\begin{equation}
+  \newW \succ  0 \quad \Leftrightarrow \quad  \C^* - \B^*\T \invA \B^* >  0.
+  \label{schurCond}
+\end{equation}
+Now let $\uscalar = \C^* - \C$ and $\uvec = \B^* - \B$ be the updated scalar and vector
+obtained from $\eta G = \newW - \W$. We expand \eqref{schurCond} and
+\eqref{gradMtx} (with $k=1$) yielding a necessary and sufficient condition for $\newW \succ 0$: $(\Wscalar + 2\eta \uscalar)-(\Wvec + \eta \uvec)\T \invA (\Wvec + \eta \uvec)   > 0$.
+Grouping as a quadratic inequality in $\eta$, and using the notation from \eqref{schurNotationPreUpdate} we result with
+\begin{equation}
+\label{PDUpdateCondQuadForm}
+(\uvec\T \invA \uvec) \, \eta^2 
+-2(\uscalar - \uvec\T \invA \B) \,\eta 
+-(\C - \B\T  \invA \B) < 0 .
+\end{equation}
+For $\eta = 0$, this inequality always
+holds since $\W \succ 0$ guarantees that $\C-\B^{\T} \invA \B >0$. As a result,
+ \eqref{PDUpdateCondQuadForm} always has a real
+root $\eta > 0$. This root provides an upper bound on $\eta$ that guarantees that $\newW$ is PD. Computing the coefficients involves computing bilinear terms and costs $O(d^2)$ if $\invA$ is given.
+
+
+
+In practice for evaluating the condition in \eqref{PDUpdateCondQuadForm} efficiently, we maintains an updated Cholesky root matrix $\cholL$ s.t. $\W = \cholL\T \cholL$. $\cholL$ enables to efficiently derive a Cholseky for $\A$ \citep{Davis05rowchol} and in turn evaluate efficiently the terms of \eqref{PDUpdateCondQuadForm} with a cost of $O(d^2)$. 
 
 For evaluating the $\log\det$ gradient, $\newW^{-1}$ can be easily computed using the Woodbury matrix
-identity \citep{woodbury1950inverting}. We rewrite \eqref{updateEq} and \eqref{gradMtx}, using $\newW = \W + \eta G = \W+\mat{\widetilde{G}}$
+identity \citep{woodbury1950inverting}. We rewrite the update and \eqref{gradMtx}, using $\newW = \W + \eta G = \W+\mat{\widetilde{G}}$
  %\label{updateEqWDB}
 and write
 \begin{equation}
