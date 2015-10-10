@@ -345,7 +345,7 @@ If $t > \frac{ (M^1 + \alpha d (1/\kappa)^2 + \beta)}{d\beta^*} log \left( \frac
 \section{Learning a block-sparse PD metric: Sparse COMET}
 The PD metric learned above can be used for extracting new features, but one is often interested to maintain interpretability with \emph{feature selection}: learn a metric which only relies on a small subset of the original feature set, or a small subset of feature pairs. To that end, we develop a method for learning feature-sparse PD metrics, using a block-coordinate descent method that maintains the PD property during training.
 
-The PD metric learned above can be used for extracting new features, but it does use the structure often found in feature interactions. Moreover, inference involves multiplication by a dense $d \times d$ matrix. In most high-dimensional learning problems, many of the features do not interact intensely with each other. Therefore, while we  
+The PD metric learned above can be used for extracting new features, but it does use the structure often found in feature interactions. Moreover, inference involves multiplication by a dense $d \times d$ matrix. In most high-dimensional learning problems, many of the features do not interact intensely with each other, meaning that their corresponding off-diagonal terms are $0$. Here, we suggest a regularization term which allows only a small set of features to interact with all other features. Any two features which are not in the ``interacting'' set will have their interaction term set to $0$.
 
 {\bf Gal: The current motivation  for our structured sparsity sounds like a 'technicality' . Instead Lets explain that a natural structure of connection, is that we want to treat separately the weights of individual features, and the weights of interactions, and then that some features may be more independent and not interact with other features}. 
 
@@ -617,7 +617,7 @@ root $\eta > 0$. This root provides an upper bound on $\eta$ that guarantees tha
 
 
 
-In practice for evaluating the condition in \eqref{PDUpdateCondQuadForm} efficiently, we maintains an updated Cholesky root matrix $\cholL$ s.t. $\W = \cholL\T \cholL$. $\cholL$ enables to efficiently derive a Cholseky for $\A$ \citep{Davis05rowchol} and in turn evaluate efficiently the terms of \eqref{PDUpdateCondQuadForm} with a cost of $O(d^2)$. 
+In practice for evaluating the condition in \eqref{PDUpdateCondQuadForm} efficiently, we maintains an updated Cholesky root matrix $\cholL$ s.t. $\W = \cholL\T \cholL$. It enables us to efficiently derive a Cholseky for $\A$ \citep{Davis05rowchol} and in turn efficiently evaluate the terms of \eqref{PDUpdateCondQuadForm} with a cost of $O(d^2)$. 
 
 For evaluating the $\log\det$ gradient, $\newW^{-1}$ can be easily computed using the Woodbury matrix
 identity \citep{woodbury1950inverting}. We rewrite the update and \eqref{gradMtx}, using $\newW = \W + \eta G = \W+\mat{\widetilde{G}}$
