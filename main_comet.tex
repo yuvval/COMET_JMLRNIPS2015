@@ -289,7 +289,7 @@ As discussed above, taking a coordinate step may take $\newW$ out of the PD cone
 \begin{equation}\label{eq:schurCond0}
   \newW \succ  0 \quad \Leftrightarrow \quad  \C^* - \B^*\T \invA \B^* >  0,
 \end{equation}
-where w.l.g. we assume we updated the first row-column, and $\C^* = \Wscalar^{new} \in \R$ (a scalar), $\B^* = \Wvec^{new} \in \R^{d-1}$ (a column vector) and $A^* = \newW_{2:d,2:d} = \W_{2:d,2:d}\in \R^{(d-1)}$. Condition \eqref{eq:schurCond0} induces a condition over the step size $\eta$, which gives us with an upper limit to the allowable step size of a block coordinate (row-column) step over \eqref{gradMtx}. Respecting the upper limit guarantees the updated matrix $\W^{new}$ will be PD. The computational complexity for calculating the upper limit is $O(d^2)$. The details of the calculation are brought in Appendix B.
+where w.l.g. we assume we updated the first row-column, and $\C^* = \Wscalar^{new} \in \R$ (a scalar), $\B^* = \Wvec^{new} \in \R^{d-1}$ (a column vector) and $A^* = \newW_{2:d,2:d} = \W_{2:d,2:d}\in \R^{(d-1)}$. Condition \eqref{eq:schurCond0} induces a condition over the step size $\eta$, which gives us with an upper limit to the allowable step size of a block coordinate (row-column) step over \eqref{gradMtx}. Respecting the upper limit guarantees the updated matrix $\W^{new}$ will be PD. The computational complexity for calculating the upper limit is $O(d^2)$. The details of the calculation are brought in Appendix B. We note that in practive we use a Cholesky solver
 
 We chose to use a Cholesky solver \citep{CHOLMOD} for evaluating the step size condition efficiently. Therefore, we maintain an updated Cholesky root matrix $\cholL$ s.t. $W = \cholL\T \cholL$. Updating $\cholL$ following an update step costs $O(d^2)$ \citep{Davis05rowchol}. Maintaining an updated Cholesky root matrix also provides an embedding of the features to the metric space throughout the progress of the training. This approach is summarized in Algorithm \ref{alg:comet}.
 
@@ -541,7 +541,7 @@ protein, (357 feat.)  &    3.6 $\pm$     0.3 &                  &   163 $\pm$   
 \section{Future directions}
 %We Presented COMET, a new metric learning approach that avoids both costly projections and unnecessary computation of full gradients. It continuously maintains a Cholesky root of the matrix, and allows feature extraction and embedding of samples in a metric space throughout the training. We demonstrated a sparse variant of COMET, where we enforced structured sparsity, where only a small number of features can interact with other features. Significantly accelerating both training and inference, maintaining interpretability and outperforming competing methods.
 
-The combination of coordinate steps with sparse enforcement presents an interesting direction for. One could boost training time by  making a smarter scheduling of coordinates selection with a probability that is proportional to its norm. Another is to apply a fill reducing permutation to the rows of the Cholesky decomposition of $L$ which induce sparsity over the rows of $L$. Doing so ca reduce the complexity per step to $O(nnz(\W))$ and it may \emph{enable interpretability} at the embedded metric space.    
+The combination of coordinate steps with sparse enforcement presents an interesting direction for future research. One could cut training time by making a smarter scheduling of coordinates selection with a probability that is proportional to its norm. Another speed-up possibility is applying a fill reducing permutation to the rows of the Cholesky decomposition $L$ of $\W$, thus inducing sparsity over the rows of $L$. Doing so can reduce the complexity per step to $O(nnz(\W))$ and it may \emph{enable interpretability} at the embedded metric space.    
 
 \acks{We would like to thank Prof. Tim Davis for fruitful discussions and for his assistance with utilizing the Cholesky decomposition row-column updates with the CHOLMOD solver.} 
 % Manual newpage inserted to improve layout of sample file - not
@@ -777,7 +777,7 @@ The same method can't be directly applied to evaluate the proximal step size $\t
 
 \begin{equation*}
  \begin{cases}
-   \Hk \eqdef (\VVk-\theta G_k) \\ 
+   H \eqdef (\VVk-\theta G_k) \\ 
    \Vk^{new} = \Hk [1 - \frac{\lambda}{||\Hk||}]_+ & \text{if}\  k \geq 1\\
    \Vk^{new} = \Hk & \text{if}\ k = 0 \\ 
  \end{cases}
@@ -788,7 +788,7 @@ The following approach is applied to decide whether the step size bound $\eta$ b
 
 
 \newcommand{\Vkorigin}{\emph{origin }}
-$\Hk$ is the gradient step with respect to $\Vk$. We apply \eqref{PDUpdateCondQuadForm} to evaluate $\eta$ and the maximal update $\Hk^{max}$ in the direction of $\Hk$. Therefore, it is easy to see that any point on a vector $H$ between $[\W, \W + \Hk^{max})$ will result with a PD update. We define an \Vkorigin which is the point where the proximal step will result with $\vec{0}$. To clarify this point, note that it is \emph{not a zero update.} Instead it means that $\Vk^{new}$ is all zeros, and hence that kind of update would result with $\newW = \W - \Vk$. Next, we use the fact that the PD cone is convex, and therefore, if the \Vkorigin resides inside the PSD cone, therefore, any point on a vector that connects \Vkorigin with another point on a vector $\vec{h}$ between $[\W, \W + \Hk^{max})$ resides inside the PD cone. Therefore, for any $\theta < \eta$ the proximal step $\Vk^{new}$ results on vector that connects the \Vkorigin with a point on $[\W, \W + \Hk^{max})$, and therefore, any such result is PD. In a similar fashion as in \eqref{PDUpdateCondQuadForm}, we can easily check if the \Vkorigin resides inside the PSD cone.  
+$\Hk$ is the gradient step with respect to $\Vk$. We apply \eqref{PDUpdateCondQuadForm} to evaluate $\eta$ and the maximal update $\Hk^{max}$ in the direction of $\Hk$. Therefore, it is easy to see that any point on a vector $H$ between $[\W, \W + \Hk^{max})$ will result with a PD update. We define an \Vkorigin which is the point where the proximal step will result with $\vec{0}$. To clarify this point, note that it is \emph{not a zero update.} Instead it means that $\Vk^{new}$ is all zeros, and hence that kind of update would result with $\newW = \W - \Vk$. Next, we use the fact that the PD cone is convex, and therefore, if the \Vkorigin resides inside the PSD cone, then, any point on a vector that connects \Vkorigin with another point on a vector $H$ between $[\W, \W + \Hk^{max})$ resides inside the PD cone. Therefore, for any $\theta < \eta$ the proximal step $\Vk^{new}$ results on vector that connects the \Vkorigin with a point on $[\W, \W + \Hk^{max})$, and therefore, any such result is PD. In a similar fashion as in \eqref{PDUpdateCondQuadForm}, we can easily check if the \Vkorigin resides inside the PSD cone.  
 
 Summing it up, we derived an upper bound for the step size by showing that if \Vkorigin resides in the PSD cone, then any proximal step with a size $\theta < \eta$ would result inside the PD cone. The \Vkorigin positive-definiteness can be easily evaluated by following a similar approach as in \eqref{PDUpdateCondQuadForm}. The cost of such evaluation is $O(d^2)$
 
