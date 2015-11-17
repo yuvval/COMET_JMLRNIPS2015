@@ -367,9 +367,6 @@ As with dense-COMET, the block-Lipschitz constants for the proximal step size pr
 
 In practice, faster convergence can be achieved by taking larger step sizes, but large non-adaptive steps may yield a  $\W^{new}$ that is no longer PD. The approach we take is similar to the dense case, albeit slightly more involved since the proximal step lies in the span of two vectors. Details are provided in Appendix E. Evaluating the step size bound costs $O(d^2)$;  
 
-
-
-
 %%%*********************
 \vspace{-6pt}
 \section{Computational complexity}\vskip -5pt
@@ -379,8 +376,8 @@ Table \ref{comp-complx} summarizes the asymptotic computational complexity of CO
 
 \begin{table*}[t]
 \captionsetup{font=small}
-\caption{Asymptotic computational complexity per one pass over all triplets and coordinates, comparing COMET, SGD-based methods \citep{OASIS, qian}, HDSL \citep{HDSL} and LEGO \citep{lego}. 
-HDSL converges before going over all coordinates, but then typically achieves significantly inferior test performance. COMET has lower complexity than SGD with multiple projections HDSL. COMET also has lower complexity than LEGO if $T(1-\gamma^2) > d$, that is, when the data is even moderately sparse and the number of triplets is larger than the number of features. 
+\caption{Asymptotic computational complexity per one pass over all triplets and coordinates, comparing COMET, SGD-based methods \citep{OASIS, qian}, HDSL \citep{HDSL} and LEGO \citep{lego}. In our experiments,
+HDSL converged before going over all coordinates, but then typically achieves significantly inferior test performance. COMET has lower complexity than SGD with multiple projections HDSL. COMET also has lower complexity than LEGO if $T(1-\gamma^2) > d$, that is, when the data is even moderately sparse and the number of triplets is larger than the number of features. 
 {\bf Notation:} $T$: number of constraints (triplets). $d$: the dimension. $0<\gamma \leq 1$: data sparsity, often is $O(1/\sqrt{d})$. $P$: size of triplet batch between PSD projections for SGD-based methods; \citep{qian} used $T/P=0.1 T$.}
 \label{comp-complx}
 \vskip 0.15in
@@ -433,32 +430,15 @@ We evaluate COMET on three benchmark datasets.
 \vskip -5pt
 In all datasets, two samples are considered similar if they share the same class label. Each data set is tested on a two-layer 5 fold cross validation experiment. We use the same (frozen) random splits across all approaches. Training all learners with the exact same set of triplets, except for LEGO that uses pairs constraints. We verified that we choose the triplets/constraints number in a regime such that test performance converges (figures not shown due to space constraints). We generated triplets randomly while keeping a fixed number of triplets per query sample.
 
-\ignore{
-
-\begin{figure}[t]
-    \centerline{
-    (a) \hspace{160pt} (b) \hspace{280pt} \newline{}
-    }
-    \captionsetup{font=small}
-    \floatbox[{\capbeside\thisfloatsetup{capbesideposition={right,top},capbesidewidth=0.3\linewidth}}]{figure}[\FBwidth]
-    {\caption{The effect of sparsity on COMET precision and runtime. \textbf{(a)} \textit{Precision-at-1-3-5} are evaluated on the test set of RCV1 (with 5000 features), versus mean training run time of COMET. Percentiles denote the learned matrix density. Error bars denote the standard error of the mean across 5 random train/test partitions (80\%/20\%). Euclid denote the \textit{precision-at-1} of the Euclidean baseline. \textbf{(b)} Mean training time for sparse COMET RCV1 (with 5000 features), versus the learned matrix density, percentiles denote the learned \textit{Precision-at-1}. }\label{spCometPrecTime}}
-{
- \includegraphics[trim=0 -0.75cm 0 0,width=4.75cm]{sCOMET_precision_vs_runtime}
- \includegraphics[trim=0 0cm 0 0,width=4.75cm]{runtime_vs_density}
-
-}
-\vskip -10pt
-\end{figure}
-}
 
 
 \begin{figure}[t]
    \captionsetup{font=small}
-\caption{The effect of sparsity on sparse-COMET precision and runtime. RCV1 dataset with 5K features. \textbf{(a)} Precision at 1, 3 and 5 evaluated on the test set {\em vs.} the mean training run time of COMET. Percentiles denote the density of the learned matrix. Error bars denote the standard error of the mean across 5 random train/test partitions (80\%/20\%). Euclid denote the \textit{precision-at-1} of the Euclidean baseline. \textbf{(b)} Mean training time for {\em vs.} the learned matrix density. Percentiles denote the \textit{Precision-at-1}. }\label{spCometPrecTime}
+    \caption{The effect of sparsity on sparse-COMET precision and runtime. RCV1 dataset with 5K features. \textbf{(a)} Precision at 1, 3 and 5 nearest neighbor evaluated on the test set {\em vs.} the mean training run time of COMET. Percentiles denote the density of the learned matrix. Error bars denote the standard error of the mean across 5 random train/test partitions (80\%/20\%). Dashed line denotes the \textit{precision-at-1} of the Euclidean baseline. \textbf{(b)} Mean training time as a function of the learned matrix density. Percentiles denote the \textit{Precision-at-1}. }\label{spCometPrecTime}
    {
   \centering
     \centerline{
-    (a) \hspace{200pt} (b) \hspace{90pt} \newline{}
+    (a) \hspace{200pt} (b) \hspace{200pt} \newline{}
     }
    \includegraphics[width=7.5cm]{sCOMET_precision_vs_runtime}
    \includegraphics[width=7.5cm]{runtime_vs_density}
@@ -656,7 +636,6 @@ Finally, we compare with the complexity of LEGO \citep{lego}. LEGO requires $O(d
 %% ------------------------------------------------------------
 \section*{Appendix D. Convergence proofs}
 %% ------------------------------------------------------------
-
 There is a well established body of work showing that with non-overlapping blocks, block-coordinate descent iterates converge w.h.p. in a linear rate to the optimum value \citep{nesterov2012efficiency,richtarik2014iteration}.
 However, the blocks we use in our method are overlapping - for example the $(1,2)$ coordinate of the matrix is a part of both the 1\textsuperscript{st} and the 2\textsuperscript{nd} column-row. To address this case, we use a more general convergence result applicable to overlapping blocks, given by \citet{richtarik2013optimal}. \citeauthor{richtarik2013optimal} give a very general result, suitable for \emph{any} distribution over the set of coordinate subsets. 
 Specifically of interest to us, \citeauthor{richtarik2013optimal} give sufficient conditions for a linear convergence rate of overlapping block-coordinate descent with a strongly convex smooth objective. 
@@ -670,7 +649,6 @@ To fulfill the conditions in \citep{richtarik2013optimal}, we must slightly modi
 Note that our algorithm can easily minimize $\tilde{L}$, the only difference being that we now need to maintain and update both $\W^{-1}$ and $(\W+\kappa I_d)^{-1}$, which does not change the asymptotic computational complexity. The additional $\kappa I_d$ term acts as a bias term, where we add a constant Euclidean distance term to the distance we learn. We note that in practice we found that simply setting $\kappa=0$ had no detrimental effect on our performance. 
 
 We show that the modified objective $\tilde{L}$ obeys Assumptions $1$ and $2$ of \citet{richtarik2013optimal}. Thereby, according to Theorem 3 of \citeauthor{richtarik2013optimal}, Algorithm \ref{alg:comet} converges with high probability to the optimum value in a linear rate:
-
 \begin{theorem}
     Let $\W^t$ be the $t$-th iterate of Algorithm \ref{alg:comet} with objective function $\tL$, sampling each column-row $i$ with probability $p_i$. Let $\tilde{L}^*$ be the optimal value of $\tL$ on the PD cone. Let $\beta^* \geq \beta$ be the strong convexity parameter of $\tL$, $M^1$ a constant depending on the norm of the dataset, $\Lambda = \max_i \frac{1}{p_i}$, $\rho >0, \epsilon>0$. Then:
 
@@ -709,24 +687,24 @@ with the constant $M_i \leq  2 \sum_{t=1}^T (\qt_i^2 +{\Delta\vec{p}_{t}}_i^2) +
         & d \|\mat{X}^{-1}\|^2 = \frac{d}{\|\mat{X}\|^2} \leq \frac{d}{\kappa^2},
     \end{align*}
     where in the last line we denote the spectral norm (maximum singular value) of $\mat{X}$ by $\|\mat{X}\|$. The last inequality is due to the fact that $\mat{X} = \W + \kappa I$, $\W \succ 0$. We therefore have a bound $M^2_i \leq \frac{\alpha d}{\kappa^2}$.
-
     Finally, the constant $M^3_{i}$ for the Frobenius regularization is immediately seen to be $\beta$.
 
     Collecting all the terms together, we obtain an overall bound on the constant: $M_i \leq M^1_{i} + M^2_{i} + M^3_{i} \leq  M^1_{i} + \frac{\alpha d}{\kappa ^2} + \beta$.
 \end{proof}
 
-Let us define a matrix $\Pp \in \R^{d \times d}$ such that $\Pp_{ij} = p_i + p_j$ for $i \ne j$, $\Pp_{ii} = p_i$. $\Pp$ is defined such that $\Pp_{ij}$ is the probability of updating the $(i,j)$ entry of the matrix $\W$ at any given iteration. To show our method converges in a linear rate, we must show that $\tL$, $\Pp$ and the constants $M_i$ satisfy the ``Expected Separable Overapproximation'' assumption presented by \citet{richtarik2013optimal}:
+Let us define a matrix $\Pp \in \R^{d \times d}$ such that $\Pp_{ij} = p_i + p_j$ for $i \ne j$, $\Pp_{ii} = p_i$. $\Pp$ is defined such that $\Pp_{ij}$ is the probability of updating the $(i,j)$ entry of the matrix $\W$ at any given iteration. To show our method converges in a linear rate, we must show that $\tL$, $\Pp$ and the constants $M_i$ satisfy the ``Expected Separable Overapproximation'' assumption presented by \citet{richtarik2013optimal}.
 
 \begin{lemma}[Expected Separable Overapproximation]\label{lem:ESO}
 For any symmetric $\Hh \in \R^{d \times d}$ such that $\W + \Hh$ is PSD, let $\Hh^i \in \R^{d \times d}$, $i=1 \ldots d$ be identical to $\Hh$ on the $i$-th row and column, and $0$ elsewhere. Then:
+\vspace{-15pt}
 \begin{equation}
-\mathbb{E}_{i \sim Mult(p_1, \ldots, p_d)} \left[ \tilde{L}(\W + \Hh^i) \right] \leq 
-\tL + \sum_{k,l=1}^d  \grdkl \Hh_{kl} \Pp_{kl} + \frac{1}{2} \sum_{k,l=1}^d   M_k (\Hh_{kl})^2 \Pp_{kl},
+    \mathbb{E}_{i \sim Mult(p_1, \ldots, p_d)} \left[ \tilde{L}(\W + \Hh^i) \right] \leq 
+    \tL + \sum_{k,l=1}^d  \grdkl \Hh_{kl} \Pp_{kl} + \frac{1}{2} \sum_{k,l=1}^d   M_k (\Hh_{kl})^2 \Pp_{kl},
 \end{equation}
 where $i$ is sampled from a multinomial distribution with parameters $(p_1, \ldots , p_d)$.
 \end{lemma}
-
 \begin{proof}%[\bf{Proof of Lemma 2}]
+\vspace{-20pt}
 \begin{align*}
     &\mathbb{E}_{i \sim Mult(p_1, \ldots, p_d)} \left[ \tilde{L}(\W + \Hh^i) \right] =\sum_{i=1}^d p_i \tilde{L}(\W + \Hh^i) \stackrel{(a)}{\leq} \\
     & \sum_{i=1}^d p_i \left(\tL + \sum_{k,l=1}^d \grdkl \Hh_{kl}^i + \frac{M_i}{2} \sum_{k,l=1}^d  (\Hh_{kl}^i)^2 \right) \stackrel{(b)}{=} \\
@@ -748,13 +726,13 @@ We first note that our algorithm is indeed a special case of the algorithm prese
 assuring us we will stay within the PD cone.
 
 Lemma \ref{lem:ESO} shows our objective is smooth and satisfies Assumption 1 of \citeauthor{richtarik2013optimal}. Assumption 2 of \citeauthor{richtarik2013optimal} is immediately satisfied because of the Frobenius regularization term, ensuring a strong convexity term $\beta^* \geq \beta > 0$. The result follows by considering that the probability $\Pp_{ij}$ of updating coordinate $(i,j)$ obeys $\Pp_{ij} \geq \min_i p_i $ and the values of $M_i$ given in Lemma \ref{lem:smooth}.
-
 \end{proof}
 
+\vspace{-20pt}
+%% ------------------------------------------------------------
 \section*{Appendix E. Selecting the step size for the sparse proximal step}
-
+%% ------------------------------------------------------------
 First, we bring the closed-form solution of the proximal step of \eqref{eq:prox} for step size $\theta$ \citep{bach2012optimization}:
-
 \begin{equation}\label{proxupdate}
  \begin{cases}
    H_k(\theta) \eqdef (V_k-\theta G_k) \\ 
@@ -775,7 +753,6 @@ This leads to two possibilities: if $\Vkorigin$ is within the PSD cone, then nec
 
 If, on the other hand, $\Vkorigin$ is not within the PSD cone, we need to find a maximal scalar $\rho_{max}$ such that $\Vkorigin' = W + \rho_{max}(W-\Vkorigin)$ is PSD. This is again done using the inequality \eqref{PDUpdateCondQuadForm}. We can now perform a binary search on $\theta$ between $0$ and $\theta_{max}$ and test whether $\Vk^{new}(\theta)$ is within the triangle whose vertices are $W$, $W-\Vk + \Hk(\theta_{max})$, and $\Vkorigin'$, where we know that this triangle is entirely within the PSD cone. This procedure still results in $O(d^2)$ computational complexity, albeit with a larger constant which may depend on the required precision. In practice, we found that even when we learn a moderately sparse metric (less that $30\%$ sparsity), it is very rare that the $\Vkorigin$ is not PD. Therefore, in our experiments we simply skip the update in case its $\Vkorigin$ is not PD.
 
-
 %The approach we take is as follows. We first determine whether the step size bound $\eta$ by \eqref{PDUpdateCondQuadForm} also holds for the proximal step, and if not it finds a smaller step size that can fulfill it.
 
 %$\Hk$ is the gradient step with respect to $\Vk$. We apply \eqref{PDUpdateCondQuadForm} to evaluate $\eta$ and the maximal update $\Hk^{max}$ in the direction of $\Hk$. Therefore, it is easy to see that any point on a vector $H$ between $[\W, \W + \Hk^{max})$ will result with a PD update. We define an \Vkorigin which is the point where the proximal step will result with $\vec{0}$. For clarification,  \emph{this is not a zero update.} Instead it means that $\Vk^{new}$ is all zeros, and hence that kind of update would result with $\newW = \W - \Vk$. Next, we use the fact that the PD cone is convex, and therefore, if the \Vkorigin resides inside the PSD cone, then, any point on a vector that connects \Vkorigin with another point on a vector $H$ between $[\W, \W + \Hk^{max})$ resides inside the PD cone. Therefore, for any $\theta < \eta$ the proximal step $\Vk^{new}$ results on vector that connects the \Vkorigin with a point on $[\W, \W + \Hk^{max})$, and therefore, any such result is PD. In a similar fashion as in \eqref{PDUpdateCondQuadForm}, we can easily check if the \Vkorigin resides inside the PSD cone.  
@@ -788,9 +765,10 @@ We stress that the bound in \eqref{PDUpdateCondQuadForm} is evaluated twice on a
 
 To conclude, we demonstrated how to evaluate a bound on the step size that maintains the proximal step inside the PD cone, such that during training we can adaptively set the step size accordingly.
 
-\newpage
-\section*{Appendix F. Results for Reuters CV1 1K features, Caltech256 249 categories and Protein}
-
+%% ------------------------------------------------------------
+\section*{Appendix F. Supplemental Results}
+%% ------------------------------------------------------------
+Precision at $k$ for three datasets: {\em Reuters CV1} 1K features, {\em Caltech-256} 249 categories and {\em Protein}.
 \begin{figure}[ht]
 {
   \centering
